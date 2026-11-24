@@ -23,7 +23,8 @@ import type { PostgresEM } from "./types/PostgresEM.js";
 
 export const app = new Koa();
 app.proxy = true;
-app.proxyIpHeader = "CF-Connecting-IP";
+app.proxyIpHeader = process.env.PROXY_IP_HEADER || "CF-Connecting-IP";
+app.maxIpsCount = 1;
 
 export const PORT = process.env.PORT || 3001;
 export const BASE_URL = process.env.BASE_URL;

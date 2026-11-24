@@ -5,11 +5,13 @@ import { Status } from "../../../enums/StatusCodes.js";
 import { User } from "../../../database/models/user.model.js";
 import { World } from "../../../database/models/world.model.js";
 import { areFriends } from "../../../services/friends/friendList.js";
-import { BASE_URL, PORT, postgres } from "../../../server.js";
+import { postgres } from "../../../server.js";
+import { publicServerUrl } from "../../../config/publicServerUrl.js";
 import { joinNewWorldMap, type Destination } from "../../../services/maproom/v3/joinNewWorldMap.js";
 import { loadFailureErr, permissionErr } from "../../../errors/errors.js";
 import type { KoaController } from "../../../utils/KoaController.js";
 import { RelocateSchema } from "../../../schemas/RelocateSchema.js";
+import { mapRoomHeaderPath } from "../getNewMap.js";
 
 /**
  * Works out where a player asked to land, when they picked a friend from the list.
@@ -56,6 +58,6 @@ export const relocate: KoaController = async (ctx) => {
   ctx.status = Status.OK;
   ctx.body = {
     error: 0,
-    mapheaderurl: `${BASE_URL}:${PORT}/api/bm/getnewmap`,
+    mapheaderurl: `${publicServerUrl()}${mapRoomHeaderPath}`,
   };
 };

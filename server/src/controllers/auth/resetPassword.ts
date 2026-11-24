@@ -1,63 +1,42 @@
 import bcrypt from "bcrypt";
-import * as jwt from "jsonwebtoken";
-
+import { raw } from "@mikro-orm/core";
+import JWT, { type JwtPayload } from "jsonwebtoken";
 import { Status } from "../../enums/StatusCodes.js";
+import { SessionType } from "../../enums/SessionType.js";
 import type { KoaController } from "../../utils/KoaController.js";
 import { authFailureErr } from "../../errors/errors.js";
-import { postgres } from "../../server.js";
+import { postgres, redis } from "../../server.js";
 import { User } from "../../database/models/user.model.js";
-import { logger } from "../../utils/logger.js";
 import { ResetPasswordSchema } from "../../schemas/AuthSchemas.js";
-import { verifyJwtToken } from "../../middleware/auth.js";
+import { sessionTokenKey } from "../../middleware/auth.js";
+import { chatTokenKey } from "../../chat/chatChannels.js";
 
-const { JsonWebTokenError, TokenExpiredError } = jwt;
-
-/**
- * Controller to handle password reset requests.
- *
- * This controller validates the password and token provided in the request body,
- * verifies the token, retrieves the user associated with the token from the database,
- * and updates the user's password. If the token is expired, an error is returned.
- *
- * @param {Context} ctx - Koa context object.
- * @returns {Promise<void>} - A promise that resolves when the password reset process is complete.
- */
 export const resetPassword: KoaController = async (ctx) => {
+  const { password, token } = ResetPasswordSchema.parse(ctx.request.body);
+  let claims: string | JwtPayload;
   try {
-    const { password, token } = ResetPasswordSchema.parse(ctx.request.body);
-
-    const decodedToken = verifyJwtToken(token);
-
-    // Verify the token
-    const { email } = decodedToken.user;
-
-    const user = await postgres.em.findOne(User, { email });
-    if (!user || user.resetToken !== token) throw authFailureErr();
-
-    const hashedPassword = await bcrypt.hash(password!, 10);
-
-    // Update the user's password
-    user.password = hashedPassword;
-    user.resetToken = "";
-    postgres.em.persist(user);
-    await postgres.em.flush();
-
-    ctx.status = Status.OK;
-    ctx.body = {
-      message: "Password has been reset successfully.",
-    };
-  } catch (error) {
-    logger.error(`Error resetting password: ${error}`);
-    if (error instanceof TokenExpiredError) {
-      ctx.status = Status.UNAUTHORIZED;
-      ctx.body = {
-        message:
-          "Password reset token has expired. Please request a new password change.",
-      };
-      return;
-    }
-
-    if (error instanceof JsonWebTokenError) logger.error(`Invalid token: ${error}`);
+    claims = JWT.verify(token, process.env.SECRET_KEY!, { algorithms: ["HS256"] });
+  } catch {
     throw authFailureErr();
   }
-};  
+
+  if (typeof claims !== "object" || typeof claims.user?.email !== "string") throw authFailureErr();
+  const email: string = claims.user.email;
+  const user = await postgres.em.findOne(User, { email, resetToken: token }, { fields: ["userid"] });
+  if (!user) throw authFailureErr();
+
+  const hash = await bcrypt.hash(password, 10);
+  const updated = await postgres.em.nativeUpdate(User, { userid: user.userid, resetToken: token }, {
+    password: hash,
+    resetToken: "",
+    website_session_version: raw("website_session_version + 1"),
+  });
+  if (updated !== 1) throw authFailureErr();
+  await Promise.all([
+    redis.del(sessionTokenKey(SessionType.GAME, email, "")),
+    redis.del(chatTokenKey(user.userid)),
+  ]);
+
+  ctx.status = Status.OK;
+  ctx.body = { message: "Password has been reset successfully." };
+};

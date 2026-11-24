@@ -11,8 +11,14 @@ import { Save } from "./save.model.js";
 import { FrontendKey } from "../../utils/FrontendKey.js";
 import { AllianceRole } from "../../enums/Alliance.js";
 import type { JsonObject } from "../../types/JsonObject.js";
+import { DEFAULT_GAME_LANGUAGE, type GameLanguage } from "../../config/GameLanguages.js";
 
 const USERNAME_LOWER_INDEX = `CREATE INDEX IF NOT EXISTS user_username_lower_index ON bym."user" (lower(username))`;
+
+export enum ServerRole {
+  PLAYER = "player",
+  MODERATOR = "moderator",
+}
 
 @Entity({ tableName: "user" })
 @Index({ name: "user_username_lower_index", expression: USERNAME_LOWER_INDEX })
@@ -39,6 +45,18 @@ export class User {
 
   @Property({ type: "boolean", default: false })
   banned: Opt<boolean> = false;
+
+  @Property({ type: "string", default: ServerRole.PLAYER, check: "server_role in ('player', 'moderator')" })
+  server_role: Opt<ServerRole> = ServerRole.PLAYER;
+
+  @Property({ type: "number", default: 0 })
+  website_session_version: Opt<number> = 0;
+
+  @Property({ type: "string", default: DEFAULT_GAME_LANGUAGE })
+  game_language: Opt<GameLanguage> = DEFAULT_GAME_LANGUAGE;
+
+  @Property({ type: "Date", nullable: true })
+  archived_at?: Date | null;
 
   @Property({ type: "boolean", default: false })
   shiny_locked: Opt<boolean> = false;
@@ -67,7 +85,7 @@ export class User {
   @FrontendKey
   last_name: Opt<string> = "";
 
-  @Property({ type: "string", default: "" })
+  @Property({ type: "string", columnType: "text", default: "" })
   resetToken: Opt<string> = "";
 
   @FrontendKey

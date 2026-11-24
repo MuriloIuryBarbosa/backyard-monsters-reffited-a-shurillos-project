@@ -1,76 +1,45 @@
-import path from "path";
 import JWT from "jsonwebtoken";
-
 import { Status } from "../../enums/StatusCodes.js";
 import type { KoaController } from "../../utils/KoaController.js";
 import { logger } from "../../utils/logger.js";
-import { promises as fs } from "fs";
 import { postgres } from "../../server.js";
 import { User } from "../../database/models/user.model.js";
-import { authFailureErr } from "../../errors/errors.js";
 import { ForgotPasswordSchema } from "../../schemas/AuthSchemas.js";
-import { transporter } from "../../config/MailConfig.js";
-/**
- * Controller to handle forgot password functionality.
- *
- * This controller validates the email provided in the request body,
- * generates a short-lived JWT token, stores the token in the database
- * associated with the user's email, reads the HTML template for the
- * password reset email, replaces the placeholder with the reset link,
- * and sends the email using the configured SMTP transporter.
- *
- * @param {Object} ctx - Koa context object.
- * @returns {Promise<void>} - A promise that resolves when the email is sent or an error occurs.
- */
-export const forgotPassword: KoaController = async (ctx) => {
-  try {
-    const { email } = ForgotPasswordSchema.parse(ctx.request.body);
+import { mailFrom, transporter } from "../../config/MailConfig.js";
+import { publicServerUrl } from "../../config/publicServerUrl.js";
 
-    // Generate a short-lived JWT token
+const template = Bun.file(new URL("../../../public/templates/forgot-password.html", import.meta.url));
+
+export const forgotPassword: KoaController = async (ctx) => {
+  const { email } = ForgotPasswordSchema.parse(ctx.request.body);
+  const user = await postgres.em.findOne(User, { email });
+
+  if (user) {
     const token = JWT.sign({ user: { email } }, process.env.SECRET_KEY!, {
       expiresIn: "20m",
+      jwtid: crypto.randomUUID(),
     });
-
-    // Store the token in the database associated with the user's email
-    const user = await postgres.em.findOne(User, { email });
-    
-    if (!user) {
-      logger.error(`ForgotPassword: User not found for email: ${email}`);
-      throw authFailureErr();
-    }
-
     user.resetToken = token;
-    postgres.em.persist(user);
     await postgres.em.flush();
 
-    // Read the HTML template
-    const templatePath = path.resolve(
-      import.meta.dirname,
-      "../../../public/templates/forgot-password.html"
-    );
-    const html = await fs.readFile(templatePath, "utf-8");
-
-    // Send user token in email
-    const resetLink = `${process.env.WEB_URL}/reset-password?token=${token}`;
-    const emailHtml = html.replace("{{resetLink}}", resetLink);
-
-    const mailOptions = {
-      from: "Backyard Monsters Refitted <info@bymrefitted.com>",
+    const serverUrl = publicServerUrl();
+    const configuredWebsite = process.env.WEB_URL;
+    const externalRecovery = ctx.path !== "/account/forgot-password" && configuredWebsite &&
+      new URL(configuredWebsite).origin !== serverUrl;
+    const resetLink = externalRecovery
+      ? new URL("/reset-password", configuredWebsite)
+      : new URL("/reset-password/", serverUrl);
+    if (externalRecovery) resetLink.searchParams.set("token", token);
+    else resetLink.hash = new URLSearchParams({ token }).toString();
+    void template.text().then((html) => transporter.sendMail({
+      from: mailFrom,
       to: email,
       subject: "Password reset request | BYM Refitted",
-      html: emailHtml,
-    };
-
-    // Send the email
-    await transporter.sendMail(mailOptions);
-
-    ctx.status = Status.OK;
-    ctx.body = { message: "Password reset email sent successfully." };
-  } catch (error) {
-    logger.error(`Error in forgotPassword controller: ${error}`);
-    ctx.status = Status.BAD_REQUEST;
-    ctx.body = {
-      message: "Failed to send email. Please try again later.",
-    };
+      text: `Reset your password using this link within 20 minutes: ${resetLink.href}`,
+      html: html.replace("{{resetLink}}", Bun.escapeHTML(resetLink.href)),
+    })).catch((error) => logger.error(`Password reset email failed for user ${user.userid}: ${error}`));
   }
+
+  ctx.status = Status.OK;
+  ctx.body = { message: "If the account exists, a password reset link will be sent." };
 };

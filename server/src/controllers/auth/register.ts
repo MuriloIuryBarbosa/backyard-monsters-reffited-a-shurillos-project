@@ -8,6 +8,8 @@ import { logger } from "../../utils/logger.js";
 import { Status } from "../../enums/StatusCodes.js";
 import { UserRegistrationSchema } from "../../schemas/AuthSchemas.js";
 import { BYMR_CDN } from "../../services/discord/fetchDiscordAvatar.js";
+import type { GameLanguage } from "../../config/GameLanguages.js";
+import type z from "zod";
 
 /**
  * Controller to handle user registration.
@@ -21,8 +23,12 @@ import { BYMR_CDN } from "../../services/discord/fetchDiscordAvatar.js";
  * @throws {Error} - Throws an error if registration fails or if the request body is invalid.
  */
 export const register: KoaController = async (ctx) => {
-  const registeredUser = UserRegistrationSchema.parse(ctx.request.body);
+  const user = await registerUser(UserRegistrationSchema.parse(ctx.request.body), ctx.ip);
+  ctx.status = Status.OK;
+  ctx.body = { user: FilterFrontendKeys(user) };
+};
 
+export const registerUser = async (registeredUser: z.output<typeof UserRegistrationSchema>, ip: string, gameLanguage?: GameLanguage) => {
   // Find user by username or email
   const existingUser = await postgres.em.findOne(User, {
     $or: [
@@ -44,18 +50,18 @@ export const register: KoaController = async (ctx) => {
 
   // Create new user record
   const user = postgres.em.create(User, {
-    ...registeredUser,
+    username: registeredUser.username,
+    email: registeredUser.email,
+    ...(gameLanguage && { game_language: gameLanguage }),
     pic_square: `${BYMR_CDN}/assets/bym-refitted-assets/placeholder.jpg`,
     password: hash,
   });
 
   postgres.em.persist(user);
   await postgres.em.flush();
-  const filteredUser = FilterFrontendKeys(user);
   logger.info(
-    `User ${filteredUser.username} registered successfully | ID: ${filteredUser.userid} | Email: ${filteredUser.email} | IP Address: ${ctx.ip}`
+    `User ${user.username} registered successfully | ID: ${user.userid} | Email: ${user.email} | IP Address: ${ip}`
   );
 
-  ctx.status = Status.OK;
-  ctx.body = { user: filteredUser };
+  return user;
 };

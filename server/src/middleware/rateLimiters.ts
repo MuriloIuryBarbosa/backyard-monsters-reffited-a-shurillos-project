@@ -249,3 +249,17 @@ export const loginLimiter = RateLimit.middleware({
     ctx.body = { error: "Too many login attempts. Please try again later." };
   },
 });
+
+export const passwordRequestLimiter = RateLimit.middleware({
+  interval: { min: 15 },
+  max: 5,
+  prefixKey: "password-request",
+  keyGenerator: byUser("password-request"),
+});
+
+export const passwordResetLimiter = RateLimit.middleware({
+  interval: { min: 15 },
+  max: 12,
+  prefixKey: "password-reset",
+  keyGenerator: byUser("password-reset"),
+});

@@ -1816,7 +1816,7 @@ package {
             var _loc9_:int = 0;
             var _loc10_:int = 0;
             var _loc11_:DisplayObject = null;
-            var _loc6_:int = GLOBAL._ROOT.stage.stageWidth;
+            var _loc6_:int = GLOBAL.StageWidth;
             var _loc7_:Point = param1;
             var _loc8_:Point = param4;
             if (param2 == "percent") {

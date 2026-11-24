@@ -88,7 +88,7 @@ package com.monsters.maproom_advanced {
             var i:int;
             this._sortArray = [];
             super();
-            w = GLOBAL._ROOT.stage.stageWidth;
+            w = GLOBAL.StageWidth;
             h = GLOBAL.GetGameHeight();
             if (w > 1024) {
                 w = 1024;
@@ -617,7 +617,7 @@ package com.monsters.maproom_advanced {
             var cellIndex:int = 0;
             var rowIndex:int = 0;
             var mapRoomCell:MapRoomCell = null;
-            var stageWidth:int = GLOBAL._ROOT.stage.stageWidth;
+            var stageWidth:int = GLOBAL.StageWidth;
             var stageHeight:int = GLOBAL.GetGameHeight();
             LOGGER.Log("log", "val of param1: " + param1);
             if (stageWidth > 1024) {

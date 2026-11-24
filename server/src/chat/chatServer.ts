@@ -2,6 +2,8 @@ import type { TCPSocketListenOptions } from "bun";
 import { logger } from "../utils/logger.js";
 import { initGateway, handleOpen, handleMessage, handleClose } from "./chatGateway.js";
 import { type SocketData } from "./chatState.js";
+import { publicServerUrl } from "../config/publicServerUrl.js";
+import { Env } from "../enums/Env.js";
 
 const POLICY_PORTS = process.env.CHAT_POLICY_PORTS ?? process.env.CHAT_WS_PORT;
 
@@ -69,11 +71,15 @@ export const startChatServer = () => {
   });
 
   initGateway();
-  startPolicyServer();
+  if (process.env.FLASH_SOCKET_POLICY !== "false") startPolicyServer();
 
   const options = {
     port: PORT,
     fetch: (req: Request, server: Bun.Server<SocketData>) => {
+      if (process.env.ENV === Env.PROD && new URL(req.url).pathname === "/play/chat" &&
+          req.headers.get("Origin") !== publicServerUrl()) {
+        return new Response("Forbidden origin", { status: 403 });
+      }
       if (server.upgrade(req, { data: DEFAULT_SOCKET_DATA })) return undefined;
       return new Response("WebSocket only", { status: 426 });
     },
@@ -82,6 +88,7 @@ export const startChatServer = () => {
       message: handleMessage,
       close: handleClose,
       idleTimeout: 120,
+      maxPayloadLength: 16 * 1024,
     },
   };
 

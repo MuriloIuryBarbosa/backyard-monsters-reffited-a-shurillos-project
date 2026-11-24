@@ -8,6 +8,7 @@ import {
 } from "../errors/errors.js";
 import JWT from "jsonwebtoken";
 import { Env } from "../enums/Env.js";
+import { requireDiscord } from "../config/AccountPolicy.js";
 import { isDiscordAccountOldEnough } from "../services/discord/discordAccountStatus.js";
 import { SessionType } from "../enums/SessionType.js";
 import { logger } from "../utils/logger.js";
@@ -18,6 +19,8 @@ export interface JwtClaims {
     discordId: string | null | undefined;
     sessionType: SessionType;
     sessionId?: string;
+    websiteSessionVersion?: number;
+    websiteSessionId?: string;
   };
 }
 
@@ -56,7 +59,11 @@ export const verifyUserAuth = async (ctx: Context, next: Next) => {
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) throw authFailureErr();
 
-  const token = authHeader.replace("Bearer ", "");
+  await authenticateSession(ctx, authHeader.slice("Bearer ".length));
+  await next();
+};
+
+export const authenticateSession = async (ctx: Context, token: string) => {
   const decodedToken = verifyJwtToken(token);
 
   const sessionType = decodedToken.user.sessionType;
@@ -71,15 +78,20 @@ export const verifyUserAuth = async (ctx: Context, next: Next) => {
 
   const user = await postgres.em.findOne(User, { email });
 
-  if (!user || user.banned) throw authFailureErr();
+  if (!user || user.banned || user.archived_at) throw authFailureErr();
+  const websiteSessionId = decodedToken.user.websiteSessionId;
+  if ((sessionType === SessionType.WEBSITE || websiteSessionId) &&
+      (decodedToken.user.websiteSessionVersion ?? 0) !== user.website_session_version) {
+    throw authFailureErr();
+  }
+  if (websiteSessionId && !(await redis.exists(sessionTokenKey(SessionType.WEBSITE, email, websiteSessionId)))) {
+    throw authFailureErr();
+  }
 
   ctx.authUser = user;
   ctx.meetsDiscordAgeCheck = decodedToken.user.meetsDiscordAgeCheck;
   ctx.sessionType = sessionType;
   ctx.sessionId = sessionId;
-
-  if (!ctx.authUser) throw authFailureErr();
-  await next();
 };
 
 /**
@@ -110,7 +122,8 @@ export const verifyAccountStatus = async (ctx: Context, next: Next) => {
  */
 export const verifyJwtToken = (token: string): AuthTokenPayload => {
   if (process.env.ENV === Env.LOCAL) {
-    const decoded = <AuthTokenPayload>JWT.decode(token);
+    const decoded = JWT.decode(token) as AuthTokenPayload | null;
+    if (!decoded?.user) throw tokenAuthFailureErr();
 
     return {
       user: {
@@ -119,6 +132,8 @@ export const verifyJwtToken = (token: string): AuthTokenPayload => {
         meetsDiscordAgeCheck: true,
         sessionType: decoded.user?.sessionType,
         sessionId: decoded.user?.sessionId,
+        websiteSessionVersion: decoded.user.websiteSessionVersion,
+        websiteSessionId: decoded.user.websiteSessionId,
       },
     };
   }
@@ -127,7 +142,7 @@ export const verifyJwtToken = (token: string): AuthTokenPayload => {
     const decoded = <AuthTokenPayload>JWT.verify(token, process.env.SECRET_KEY!);
     
     const { discordId } = decoded.user;
-    const meetsDiscordAgeCheck = discordId ? isDiscordAccountOldEnough(discordId) : false;
+    const meetsDiscordAgeCheck = !requireDiscord || Boolean(discordId && isDiscordAccountOldEnough(discordId));
 
     return {
       user: { ...decoded.user, meetsDiscordAgeCheck },

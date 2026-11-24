@@ -1,4 +1,6 @@
 package com.monsters.configs {
+    import GAME;
+
     public class BYMConfig {
 
         public static const k_sLOCAL_MODE_TRUNK:int = 1;
@@ -43,11 +45,8 @@ package com.monsters.configs {
         }
 
         public function get RENDERER_ON():Boolean {
-            // Originally set to false
-            // Apparently, it is more performant to have this enabled
-            // RENDERER_ON true = graphics are rendered using a bitmap approach
-            // RENDERER_ON false = graphics are rendered using a vector approach / display list approach
-            return true;
+            // Ruffle can render the display list without reading map-sized bitmaps back from the GPU each frame.
+            return !GAME.webClient;
         }
 
         public function get OPTIMIZED_SHADOWS():Boolean {

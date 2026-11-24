@@ -12,6 +12,7 @@ package com.monsters.chat.impl.ws {
     import com.worlize.websocket.WebSocketEvent;
     import flash.events.EventDispatcher;
     import flash.events.TimerEvent;
+    import flash.external.ExternalInterface;
     import flash.utils.Dictionary;
     import flash.utils.Timer;
 
@@ -37,13 +38,22 @@ package com.monsters.chat.impl.ws {
         // ── IChatSystem: Connection ───────────────────────────────────────────
 
         public function connect():Boolean {
-            _ws = new WebSocket("ws://" + _host + ":" + _port + "/", "http://" + _host);
-            _ws.addEventListener(WebSocketEvent.OPEN, onWsOpen);
-            _ws.addEventListener(WebSocketEvent.MESSAGE, onWsMessage);
-            _ws.addEventListener(WebSocketEvent.CLOSED, onWsClose);
-            _ws.addEventListener(WebSocketErrorEvent.CONNECTION_FAIL, onWsError);
-            _ws.addEventListener(WebSocketErrorEvent.ABNORMAL_CLOSE, onWsError);
-            _ws.connect();
+            if (GAME.webClient && ExternalInterface.available) {
+                disconnect();
+                ExternalInterface.addCallback("bymrChatOpen", onConnected);
+                ExternalInterface.addCallback("bymrChatMessage", receiveMessage);
+                ExternalInterface.addCallback("bymrChatClose", onBrowserClose);
+                ExternalInterface.call("bymrChatConnect", _port);
+            }
+            else {
+                _ws = new WebSocket("ws://" + _host + ":" + _port + "/", "http://" + _host);
+                _ws.addEventListener(WebSocketEvent.OPEN, onWsOpen);
+                _ws.addEventListener(WebSocketEvent.MESSAGE, onWsMessage);
+                _ws.addEventListener(WebSocketEvent.CLOSED, onWsClose);
+                _ws.addEventListener(WebSocketErrorEvent.CONNECTION_FAIL, onWsError);
+                _ws.addEventListener(WebSocketErrorEvent.ABNORMAL_CLOSE, onWsError);
+                _ws.connect();
+            }
             _pingTimer = new Timer(90000);
             _pingTimer.addEventListener(TimerEvent.TIMER, onPingTimer);
             _pingTimer.start();
@@ -55,8 +65,13 @@ package com.monsters.chat.impl.ws {
                 _pingTimer.stop();
                 _pingTimer = null;
             }
-            if (_ws)
+            if (GAME.webClient && ExternalInterface.available) {
+                ExternalInterface.call("bymrChatDisconnect");
+            }
+            if (_ws) {
                 _ws.close();
+                _ws = null;
+            }
             _connected = false;
             _loggedIn = false;
         }
@@ -161,6 +176,10 @@ package com.monsters.chat.impl.ws {
         // ── WebSocket event handlers ──────────────────────────────────────────
 
         private function onWsOpen(e:WebSocketEvent):void {
+            onConnected();
+        }
+
+        private function onConnected():void {
             _connected = true;
             dispatchEvent(new ChatEvent(ChatEvent.CONNECT, true));
             if (_pendingUserId != null)
@@ -173,15 +192,22 @@ package com.monsters.chat.impl.ws {
         }
 
         private function onWsError(e:WebSocketErrorEvent):void {
+            onBrowserClose(e.text);
+        }
+
+        private function onBrowserClose(reason:String):void {
             _connected = false;
             _loggedIn = false;
             var params:Dictionary = new Dictionary();
-            params["reason"] = e.text != null ? e.text : "connection error";
+            params["reason"] = reason != null ? reason : "connection error";
             dispatchEvent(new ChatEvent(ChatEvent.CONNECT, false, params));
         }
 
         private function onWsMessage(e:WebSocketEvent):void {
-            var raw:String = e.message ? e.message.utf8Data : null;
+            receiveMessage(e.message ? e.message.utf8Data : null);
+        }
+
+        private function receiveMessage(raw:String):void {
             if (!raw)
                 return;
 
@@ -319,9 +345,15 @@ package com.monsters.chat.impl.ws {
         }
 
         private function sendJson(obj:Object):void {
-            if (!_connected || !_ws)
+            if (!_connected)
                 return;
-            _ws.sendUTF(JSON.stringify(obj));
+            var payload:String = JSON.stringify(obj);
+            if (GAME.webClient && ExternalInterface.available) {
+                ExternalInterface.call("bymrChatSend", payload);
+            }
+            else if (_ws) {
+                _ws.sendUTF(payload);
+            }
         }
     }
 }

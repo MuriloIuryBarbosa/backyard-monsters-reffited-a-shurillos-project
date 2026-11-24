@@ -1,4 +1,6 @@
 import Router from "@koa/router";
+import { createReadStream } from "node:fs";
+import website from "./website.routes.js";
 
 import { logRequest } from "./middleware/logRequest.js";
 import { apiVersion } from "./middleware/apiVersioning.js";
@@ -10,6 +12,8 @@ import {
   getAreaLimiter,
   getCellsLimiter,
   loginLimiter,
+  passwordRequestLimiter,
+  passwordResetLimiter,
   publicReadLimiter,
   registerLimiter,
   allianceInviteLimiter,
@@ -46,7 +50,7 @@ import { migrateBase } from "./controllers/maproom/v2/migrateBase.js";
 import { migrateToFriend } from "./controllers/maproom/v2/migrateToFriend.js";
 import { rejectMigrateToFriend } from "./controllers/maproom/v2/rejectMigrateToFriend.js";
 
-import { getNewMap } from "./controllers/maproom/getNewMap.js";
+import { getNewMap, mapRoomHeaderPath } from "./controllers/maproom/getNewMap.js";
 import { setMapVersion } from "./controllers/maproom/setMapVersion.js";
 import { infernoSave } from "./controllers/inferno/infernoSave.js";
 import { infernoMonsters } from "./controllers/inferno/infernoMonsters.js";
@@ -121,6 +125,15 @@ const router = new Router();
 * ──────────────────────────────────────────────── */
 router.post("/init", logRequest, init);
 router.get("/connection", (ctx) => (ctx.status = Status.OK));
+router.get("/friends", (ctx) => ctx.redirect("/play/#amigos"));
+router.get("/play", (ctx) => {
+  if (ctx.path === "/play") {
+    ctx.redirect("/play/");
+    return;
+  }
+  ctx.type = "html";
+  ctx.body = createReadStream("public/index.html");
+});
 
 /**  ────────────────────────────────────────────────
 * 📦 Account & Auth
@@ -128,8 +141,11 @@ router.get("/connection", (ctx) => (ctx.status = Status.OK));
 router.post("/api/:apiVersion/player/getinfo", apiVersion, loginLimiter, logRequest, login);
 router.post("/api/:apiVersion/player/logout", apiVersion, verifyUserAuth, logRequest, logout);
 router.post("/api/:apiVersion/player/register", apiVersion, registerLimiter, logRequest, register);
-router.post("/api/:apiVersion/player/forgotPassword", apiVersion, forgotPassword);
-router.post("/api/:apiVersion/player/reset-password", resetPassword);
+router.post("/api/:apiVersion/player/forgotPassword", apiVersion, passwordRequestLimiter, forgotPassword);
+router.post("/api/:apiVersion/player/reset-password", passwordResetLimiter, resetPassword);
+router.post("/account/forgot-password", passwordRequestLimiter, forgotPassword);
+router.post("/account/reset-password", passwordResetLimiter, resetPassword);
+router.use(website.routes());
 router.get("/api/:apiVersion/supportedLangs", apiVersion, logRequest, supportedLangs);
 router.get("/api/:apiVersion/player/account", apiVersion, verifyUserAuth, getAccount);
 router.post("/api/:apiVersion/player/changeusername", apiVersion, verifyUserAuth, changeUsernameLimiter, logRequest, changeUsername);
@@ -157,6 +173,7 @@ router.post("/base/rejectmigratetofriend", verifyUserAuth, logRequest, rejectMig
 * 📦 Map Room 1 / Inferno
 * ──────────────────────────────────────────────── */
 router.post("/api/:apiVersion/bm/getnewmap", apiVersion, verifyUserAuth, logRequest, getNewMap);
+router.post(mapRoomHeaderPath, verifyUserAuth, verifyAccountStatus, getNewMap);
 router.post("/api/:apiVersion/bm/base/load", apiVersion, verifyUserAuth, logRequest, baseLoad);
 router.post("/api/:apiVersion/bm/base/save", apiVersion, verifyUserAuth, logRequest, infernoSave);
 router.post("/api/:apiVersion/bm/base/updatesaved", verifyUserAuth, logRequest, updateSaved);

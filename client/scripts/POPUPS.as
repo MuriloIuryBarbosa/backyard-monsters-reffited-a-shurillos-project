@@ -12,6 +12,7 @@ package {
     import flash.events.Event;
     import flash.events.MouseEvent;
     import flash.events.TimerEvent;
+    import flash.external.ExternalInterface;
     import flash.geom.Point;
     import flash.text.TextFieldAutoSize;
     import flash.utils.Timer;
@@ -519,7 +520,12 @@ package {
 
         /** Sends the player to the friends page, which is where friendships live. */
         public static function OpenFriendsPage():void {
-            GLOBAL.gotoURL(k_FRIENDS_PAGE_URL);
+            if (GAME.webClient && ExternalInterface.available) {
+                ExternalInterface.call("bymrOpenFriends");
+            }
+            else {
+                GLOBAL.gotoURL(k_FRIENDS_PAGE_URL);
+            }
             POPUPS.Next();
         }
 

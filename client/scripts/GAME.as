@@ -26,6 +26,10 @@ package {
 
         public static var language:String = "";
 
+        public static var webClient:Boolean = false;
+
+        public static var webPlayer:Object;
+
         private var _checkScreenSize:Boolean = true;
 
         private var _previousDistance:Number = 0;
@@ -33,17 +37,32 @@ package {
         private var _scaleFactor:Number = 1;
 
         public function GAME() {
-            var urls:Object = null;
+            super();
+            if (stage) {
+                start();
+            }
+            else {
+                addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
+            }
+        }
+
+        private function onAddedToStage(event:Event):void {
+            removeEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
+            start();
+        }
+
+        private function start():void {
+            var params:Object = loaderInfo.parameters;
 
             // Override server URL if provided as a flash var
-            var flashVarServerUrl:* = loaderInfo.parameters["serverUrl"];
+            var flashVarServerUrl:* = params["serverUrl"];
 
             if (flashVarServerUrl != undefined && flashVarServerUrl != "") {
                 GLOBAL.serverUrl = String(flashVarServerUrl);
                 GLOBAL.cdnUrl = GLOBAL.serverUrl;
             }
 
-            var flashVarCdnUrl:* = loaderInfo.parameters["cdnUrl"];
+            var flashVarCdnUrl:* = params["cdnUrl"];
 
             if (flashVarCdnUrl != undefined && flashVarCdnUrl != "") {
                 GLOBAL.cdnUrl = String(flashVarCdnUrl);
@@ -52,32 +71,30 @@ package {
             var serverUrl:String = GLOBAL.serverUrl;
             var apiVersionSuffix:String = GLOBAL.apiVersionSuffix + "/";
             var cdnUrl:String = GLOBAL.cdnUrl;
-            super();
             _instance = this;
             FONTS.Register();
-            GLOBAL._local = !ExternalInterface.available;
+            webClient = params["webClient"] == "true";
+            GLOBAL._local = webClient || !ExternalInterface.available;
             ReferencedExposedStructures.Include();
-            if (this.parent) {
-                urls = {};
-                if (serverUrl) {
-                    urls._baseURL = serverUrl + "base/";
-                    urls._apiURL = serverUrl + "api/" + apiVersionSuffix;
-                    urls.infbaseurl = urls._apiURL + "bm/base/";
-                    urls._statsURL = serverUrl + "recordstats.php";
-                    urls._mapURL = serverUrl + "worldmapv2/";
-                    urls.map3url = serverUrl + "worldmapv3/";
-                    urls._allianceURL = serverUrl + "alliance/";
-                    urls.languageurl = cdnUrl + "gamestage/assets/";
-                    urls._storageURL = cdnUrl + "assets/";
-                    urls._soundPathURL = cdnUrl + "assets/sounds/";
-                    urls._gameURL = serverUrl + "";
-                    urls._appid = serverUrl + "";
-                    urls._tpid = serverUrl + "";
-                    urls._currencyURL = serverUrl + "";
-                    urls._countryCode = serverUrl + "us";
-                }
-                this.Data(urls, loaderInfo.parameters);
+            var urls:Object = {};
+            if (serverUrl) {
+                urls._baseURL = serverUrl + "base/";
+                urls._apiURL = serverUrl + "api/" + apiVersionSuffix;
+                urls.infbaseurl = urls._apiURL + "bm/base/";
+                urls._statsURL = serverUrl + "recordstats.php";
+                urls._mapURL = serverUrl + "worldmapv2/";
+                urls.map3url = serverUrl + "worldmapv3/";
+                urls._allianceURL = serverUrl + "alliance/";
+                urls.languageurl = cdnUrl + "gamestage/assets/";
+                urls._storageURL = cdnUrl + "assets/";
+                urls._soundPathURL = cdnUrl + "assets/sounds/";
+                urls._gameURL = serverUrl + "";
+                urls._appid = serverUrl + "";
+                urls._tpid = serverUrl + "";
+                urls._currencyURL = serverUrl + "";
+                urls._countryCode = serverUrl + "us";
             }
+            this.Data(urls, params);
         }
 
         public static function disableWindowScroll(param1:Event = null):void {
@@ -89,6 +106,11 @@ package {
         }
 
         public function setLauncherVars(params:Object):void {
+            if (webClient) {
+                language = String(params.language || "portuguese");
+                webPlayer = params.player ? JSON.parse(params.player) : null;
+                return;
+            }
             try {
                 sharedObj = SharedObject.getLocal("bymr_data", "/");
 
@@ -156,11 +178,19 @@ package {
             }
             addEventListener(Event.ENTER_FRAME, GLOBAL.TickFast);
 
-            LOGIN.Login();
             stage.scaleMode = StageScaleMode.NO_SCALE;
             stage.addEventListener(Event.RESIZE, GLOBAL.ResizeGame);
             stage.showDefaultContextMenu = false;
-            ExternalInterfaceManager.Initialize();
+            if (webClient) {
+                stage.quality = StageQuality.BEST;
+                updateWebScale(Number(loaderParams.gameScale) || 1);
+                if (ExternalInterface.available) {
+                    ExternalInterface.addCallback("bymrGameScale", updateWebScale);
+                }
+            }
+            else {
+                ExternalInterfaceManager.Initialize();
+            }
 
             if (this._checkScreenSize) {
                 GLOBAL._SCREENINIT = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
@@ -171,6 +201,17 @@ package {
                     GLOBAL._SCREENINIT = new Rectangle(0, 0, 760, 750);
                 }
             }
+            LOGIN.Login();
+        }
+
+        private function updateWebScale(scale:Number):void {
+            scale = Math.max(1, Math.min(2, scale));
+            if (GLOBAL._ROOT.scaleX == scale) return;
+            GLOBAL._ROOT.scaleX = GLOBAL._ROOT.scaleY = scale;
+            // NO_SCALE centers the original 760 × 670 stage inside the viewport.
+            GLOBAL._ROOT.x = 380 * (1 - scale);
+            GLOBAL._ROOT.y = 335 * (1 - scale);
+            GLOBAL.ResizeGame(null);
         }
 
         protected function uncaughtErrorThrown(param1:UncaughtErrorEvent):void {

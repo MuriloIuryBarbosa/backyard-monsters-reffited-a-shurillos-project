@@ -1,0 +1,36 @@
+.account {
+  width: min(calc(100% - 2rem), 25rem);
+  padding-block: clamp(2rem, 10vh, 6rem);
+}
+
+.account a {
+  color: #bdd9b9;
+}
+
+.account h1 {
+  margin-top: 1.25rem;
+}
+
+.account form:not([hidden]) {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.account input,
+.account button {
+  border: 1px solid #526651;
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+.account input {
+  background: #1b251d;
+  color: #eef0e9;
+}
+
+.account button {
+  background: #bdd9b9;
+  color: #101511;
+  cursor: pointer;
+}

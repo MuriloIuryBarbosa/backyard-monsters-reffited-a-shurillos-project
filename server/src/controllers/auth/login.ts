@@ -16,6 +16,7 @@ import { sessionTokenKey, type JwtClaims, verifyJwtToken } from "../../middlewar
 import { Status } from "../../enums/StatusCodes.js";
 import { UserLoginSchema } from "../../schemas/AuthSchemas.js";
 import { Env } from "../../enums/Env.js";
+import { requireDiscord } from "../../config/AccountPolicy.js";
 import { SessionType } from "../../enums/SessionType.js";
 import { fetchDiscordAvatar } from "../../services/discord/fetchDiscordAvatar.js";
 import { radioAlertSettings } from "../../services/user/radioAlertSettings.js";
@@ -41,13 +42,15 @@ const RENEW_WITHIN_SECONDS = 7 * 24 * 60 * 60;
 const authenticateWithToken = async (token: string) => {
   const { user } = verifyJwtToken(token);
 
-  if (!user.sessionId) throw tokenAuthFailureErr();
+  if (!user.sessionId || user.websiteSessionId) throw tokenAuthFailureErr();
 
   const storedToken = await redis.get(sessionTokenKey(user.sessionType, user.email, user.sessionId));
   if (storedToken !== token) throw tokenAuthFailureErr();
 
-  let userRecord = await postgres.em.findOne(User, { email: user.email });
+  const userRecord = await postgres.em.findOne(User, { email: user.email });
   if (!userRecord) throw emailPasswordErr();
+  if (user.sessionType === SessionType.WEBSITE &&
+      (user.websiteSessionVersion ?? 0) !== userRecord.website_session_version) throw tokenAuthFailureErr();
 
   const sessionId = user.sessionId;
 
@@ -80,6 +83,51 @@ const canReuseToken = (token: string, tokenSessionType: SessionType, sessionType
   sessionType !== SessionType.GAME &&
   tokenSessionType === sessionType &&
   sessionTtlSeconds(token) > RENEW_WITHIN_SECONDS;
+
+export const issueSessionToken = async (
+  user: User,
+  sessionType: SessionType,
+  sessionId: string = crypto.randomUUID(),
+  websiteSessionId?: string,
+) => {
+  const token = JWT.sign(
+    {
+      user: {
+        email: user.email,
+        discordId: process.env.ENV === Env.PROD ? user.discord_id : undefined,
+        sessionType,
+        sessionId,
+        ...((sessionType === SessionType.WEBSITE || websiteSessionId) && { websiteSessionVersion: user.website_session_version }),
+        ...(websiteSessionId && { websiteSessionId }),
+      },
+    } satisfies JwtClaims,
+    process.env.SECRET_KEY!,
+    { expiresIn: (process.env.SESSION_LIFETIME || "30d") as SessionLifetime },
+  );
+  await redis.setex(sessionTokenKey(sessionType, user.email, sessionId), sessionTtlSeconds(token), token);
+  return token;
+};
+
+export const gameLoginResponse = (user: User, token: string) => {
+  const filteredUser = FilterFrontendKeys(user);
+  return {
+    error: 0,
+    userId: filteredUser.userid,
+    ...filteredUser,
+    version: 128,
+    token,
+    mapversion: 2,
+    mailversion: 1,
+    soundversion: 1,
+    languageversion: 8,
+    sendinvite: 1,
+    app_id: "",
+    tpid: "",
+    currency_url: "",
+    language: "en",
+    radio: radioAlertSettings(user),
+  };
+};
 
 /**
  * Controller to handle user login.
@@ -125,43 +173,15 @@ export const login: KoaController = async (ctx) => {
     if (!isMatch) throw emailPasswordErr();
   }
 
-  if (user.banned) throw userPermaBannedErr();
-
-  // Generate and set the token
-  const sessionLifeTime = process.env.SESSION_LIFETIME || "30d";
-  let discordId: string | null | undefined;
-
-  sessionId ??= crypto.randomUUID();
+  if (user.banned || user.archived_at) throw userPermaBannedErr();
 
   // Check if the user has verified their Discord account
   if (process.env.ENV === Env.PROD) {
-    if (!user.discord_verified) throw discordVerifyErr();
-    discordId = user.discord_id;
-
-    if (discordId) fetchDiscordAvatar(user.userid, discordId);
+    if (requireDiscord && !user.discord_verified) throw discordVerifyErr();
+    if (user.discord_id) fetchDiscordAvatar(user.userid, user.discord_id);
   }
 
-  let newToken = reusableToken;
-
-  if (!newToken) {
-    newToken = JWT.sign(
-      {
-        user: {
-          email: user.email,
-          discordId,
-          sessionType,
-          sessionId,
-        },
-      } satisfies JwtClaims,
-      process.env.SECRET_KEY!,
-      {
-        expiresIn: sessionLifeTime as SessionLifetime,
-      }
-    );
-
-    const tokenTtl = sessionTtlSeconds(newToken);
-    await redis.setex(sessionTokenKey(sessionType, user.email, sessionId), tokenTtl, newToken);
-  }
+  const newToken = reusableToken ?? await issueSessionToken(user, sessionType, sessionId);
 
   postgres.em.persist(user);
   await postgres.em.flush();
@@ -179,21 +199,5 @@ export const login: KoaController = async (ctx) => {
   });
 
   ctx.status = Status.OK;
-  ctx.body = {
-    error: 0,
-    userId: filteredUser.userid,
-    ...filteredUser,
-    version: 128,
-    token: newToken,
-    mapversion: 2,
-    mailversion: 1,
-    soundversion: 1,
-    languageversion: 8,
-    sendinvite: 1,
-    app_id: "",
-    tpid: "",
-    currency_url: "",
-    language: "en",
-    radio: radioAlertSettings(user),
-  };
+  ctx.body = gameLoginResponse(user, newToken);
 };

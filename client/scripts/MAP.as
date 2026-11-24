@@ -528,8 +528,8 @@ package {
 
         public static function Click(param1:MouseEvent = null):void {
             if (UI2._scrollMap) {
-                _dragX = stage.mouseX - _GROUND.x;
-                _dragY = stage.mouseY - _GROUND.y;
+                _dragX = GLOBAL._ROOT.mouseX - _GROUND.x;
+                _dragY = GLOBAL._ROOT.mouseY - _GROUND.y;
                 _startX = _GROUND.x;
                 _startY = _GROUND.y;
                 _dragging = true;
@@ -597,7 +597,7 @@ package {
                 _autoScroll = true;
                 tx = 0 - (X - 380);
                 ty = 0 - (Y - 340);
-                w = stage.stageWidth;
+                w = GLOBAL.StageWidth;
                 h = GLOBAL.GetGameHeight();
                 if (ease) {
                     TweenLite.to(_GROUND, time, {
@@ -665,14 +665,14 @@ package {
                 }
                 tx /= _loc12_;
                 ty /= _loc12_;
-                tx = 0 - tx + GLOBAL._ROOT.stage.stageWidth * 0.5;
-                ty = 0 - ty + GLOBAL._ROOT.stage.stageHeight * 0.5;
+                tx = 0 - tx + GLOBAL.StageWidth * 0.5;
+                ty = 0 - ty + GLOBAL.StageHeight * 0.5;
                 _dragX = tx;
                 _dragY = ty;
             }
             else if (_dragging && UI2._scrollMap && !_autoScroll && _canScroll) {
-                _loc15_ = stage.mouseX;
-                _loc16_ = stage.mouseY;
+                _loc15_ = GLOBAL._ROOT.mouseX;
+                _loc16_ = GLOBAL._ROOT.mouseY;
                 tx = _loc15_ - _dragX >> 0;
                 ty = _loc16_ - _dragY >> 0;
                 _loc17_ = _loc15_ - (_dragX + _startX);
@@ -686,8 +686,8 @@ package {
                     }
                 }
             }
-            var _loc2_:int = GLOBAL._ROOT.stage.stageWidth;
-            var _loc3_:int = GLOBAL._ROOT.stage.stageHeight;
+            var _loc2_:int = GLOBAL.StageWidth;
+            var _loc3_:int = GLOBAL.StageHeight;
             var _loc4_:int = -1615;
             var _loc5_:int = 2375;
             var _loc6_:int = -650;

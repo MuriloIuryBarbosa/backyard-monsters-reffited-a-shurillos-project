@@ -225,7 +225,7 @@ package com.monsters.maproom_inferno.views {
         private function shellDown(param1:MouseEvent):void {
             TweenLite.killTweensOf(this.shell, false);
             this.dragging = true;
-            this.dragPoint = new Point(stage.mouseX - this.shell.x, stage.mouseY - this.shell.y);
+            this.dragPoint = new Point(mouseX - this.shell.x, mouseY - this.shell.y);
             addEventListener(Event.ENTER_FRAME, this.shellDrag, false, 0, true);
             stage.addEventListener(MouseEvent.MOUSE_UP, this.stageUp, false, 0, true);
         }
@@ -293,8 +293,8 @@ package com.monsters.maproom_inferno.views {
         }
 
         private function shellDrag(param1:Event):void {
-            var _loc2_:int = int(stage.mouseX - this.dragPoint.x);
-            var _loc3_:int = int(stage.mouseY - this.dragPoint.y);
+            var _loc2_:int = int(mouseX - this.dragPoint.x);
+            var _loc3_:int = int(mouseY - this.dragPoint.y);
             if (_loc2_ > this.hardBounds.x) {
                 _loc2_ = this.hardBounds.x;
             }

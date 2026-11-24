@@ -3,7 +3,8 @@ import path from "path";
 import type { Save } from "../../database/models/save.model.js";
 import type { User } from "../../database/models/user.model.js";
 import { BaseType } from "../../enums/Base.js";
-import { transporter } from "../../config/MailConfig.js";
+import { mailFrom, transporter } from "../../config/MailConfig.js";
+import { publicServerUrl } from "../../config/publicServerUrl.js";
 import { redis } from "../../server.js";
 import { getCurrentDateTime } from "../../utils/getCurrentDateTime.js";
 import { logger } from "../../utils/logger.js";
@@ -97,8 +98,8 @@ export const sendAttackAlert = async (attacker: User, defender: User, save: Save
     const attackerName = Bun.escapeHTML(attacker.username);
     const baseName = attackDetails(save);
     
-    const playLink = process.env.WEB_URL!;
-    const cdnUrl = process.env.CDN_URL!;
+    const playLink = process.env.WEB_URL || publicServerUrl();
+    const cdnUrl = process.env.CDN_URL || publicServerUrl();
     const unsubscribe = unsubscribeLink(defender.userid);
 
     const template = await Bun.file(TEMPLATE_PATH).text();
@@ -112,7 +113,7 @@ export const sendAttackAlert = async (attacker: User, defender: User, save: Save
 
     transporter
       .sendMail({
-        from: "Backyard Monsters Refitted <info@bymrefitted.com>",
+        from: mailFrom,
         to: defender.email,
         subject: `${attacker.username} is attacking ${baseName}! | BYM Refitted`,
         text: `${attacker.username} is attacking ${baseName}!\n\nPlay now: ${playLink}\n\nYou are getting this because Attack Alerts are switched on in your Radio Tower. Unsubscribe: ${unsubscribe}`,

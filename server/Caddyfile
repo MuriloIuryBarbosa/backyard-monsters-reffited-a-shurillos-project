@@ -1,0 +1,14 @@
+{$GAME_DOMAIN} {
+	encode zstd gzip
+	header X-Content-Type-Options nosniff
+	redir /play /play/ 308
+	redir /reset-password /reset-password/?{http.request.uri.query} 308
+
+	handle /play/chat {
+		reverse_proxy web:3010
+	}
+
+	handle {
+		reverse_proxy web:3001
+	}
+}

@@ -1,14 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-import { BASE_URL, PORT } from "../../server.js";
-
-/**
- * The server's public address. Behind a proxy BASE_URL:PORT isn't reachable, so prod sets SERVER_URL.
- * Read on each call: this module is imported while server.ts is still initialising.
- *
- * @returns {string} The address.
- */
-const serverUrl = (): string => process.env.SERVER_URL || `${BASE_URL}:${PORT}`;
+import { publicServerUrl } from "../../config/publicServerUrl.js";
 
 /**
  * Signs a player's unsubscribe token. The links never expire; rotating SECRET_KEY revokes them all.
@@ -25,7 +17,7 @@ const signToken = (userid: number): string =>
  * @param {number} userid - The player.
  * @returns {string} The unsubscribe URL.
  */
-export const unsubscribeLink = (userid: number) => `${serverUrl()}/radio/unsubscribe?u=${userid}&t=${signToken(userid)}`;
+export const unsubscribeLink = (userid: number) => `${publicServerUrl()}/radio/unsubscribe?u=${userid}&t=${signToken(userid)}`;
 
 /**
  * Whether a token from an unsubscribe link was signed for this player.

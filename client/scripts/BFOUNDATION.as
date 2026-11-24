@@ -24,6 +24,7 @@ package {
     import com.monsters.utils.MovieClipUtils;
     import flash.display.Bitmap;
     import flash.display.BitmapData;
+    import flash.display.PixelSnapping;
     import flash.display.BlendMode;
     import flash.display.DisplayObject;
     import flash.display.MovieClip;
@@ -1106,7 +1107,7 @@ package {
                         this.m_shadowBMD = imageBitmapData;
                         if (!BYMConfig.instance.RENDERER_ON) {
                             (buildingAssetContainer = BuildingAssetContainer(this._mcBase)).Clear();
-                            (_loc17_ = buildingAssetContainer.addChild(new Bitmap(imageBitmapData))).blendMode = BlendMode.MULTIPLY;
+                            (_loc17_ = buildingAssetContainer.addChild(new Bitmap(imageBitmapData, PixelSnapping.AUTO, GAME.webClient))).blendMode = BlendMode.MULTIPLY;
                             _loc17_.x = imageDataB[_IMAGE_NAMES[_RASTERDATA_SHADOW] + state][1].x;
                             _loc17_.y = imageDataB[_IMAGE_NAMES[_RASTERDATA_SHADOW] + state][1].y;
                         }
@@ -1252,7 +1253,7 @@ package {
             this._offsets[param1].y = param4[_IMAGE_NAMES[param1] + param2][1].y;
             if (!BYMConfig.instance.RENDERER_ON) {
                 param3.Clear();
-                param3.addChild(new Bitmap(param5));
+                param3.addChild(new Bitmap(param5, PixelSnapping.AUTO, GAME.webClient));
                 param3.x = this._offsets[param1].x;
                 param3.y = this._offsets[param1].y;
             }

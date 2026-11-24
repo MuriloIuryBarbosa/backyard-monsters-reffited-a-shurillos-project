@@ -15,18 +15,59 @@
 
 ## 📖 About This Project
 This repository is a complete digital preservation and restoration of Backyard Monsters, Kixeye’s 2010 Flash-based strategy game. It features a reconstructed client, decompiled from original game files, alongside a custom-built server component implemented through extensive reverse engineering efforts.
-The client runs on version 128.5690 and remains fully compatible with the original ActionScript 3 codebase, rendered through Adobe Flash Player. The backend is powered by Bun, using the Koa framework, with a PostgreSQL database managed via MikroORM and written entirely in TypeScript.
+The ActionScript 3 client runs in the browser through the self-hosted Ruffle runtime or in the standalone Flash Player. The TypeScript backend uses Bun and Koa, with PostgreSQL managed through MikroORM and Redis for sessions and chat.
 This project aims to keep a piece of gaming history alive and playable for future generations.
 
 <br>
 
-## 🚀 How to Play
-We recommend to download our game launcher which can be installed from our website's [download page](https://bymrefitted.com/downloads). This will allow you to seamlessly manage what build versions of the client you play, all from one place, without worrying about manually downloading new versions. The launcher supports Windows (64-bit), MacOS and Linux.
+## Jogar pelo navegador
+
+Abra [a página do jogo local](http://localhost:3001/play/) e entre com o e-mail e a senha da sua conta. No primeiro acesso de uma conta nova, use **Criar conta**, escolha o idioma e o servidor criará o quintal ao abrir o jogo. Para contas anteriores à preferência de idioma, o site começa em português. O idioma salvo em **Conta** entra em vigor na próxima abertura do jogo.
+
+- **Jogar** fecha o painel do site e volta ao quintal.
+- **Amigos** abre um painel sobre o jogo. Qualquer jogador pode buscar contas, enviar e responder a pedidos, cancelar pedidos enviados e remover amizades.
+- **Conta** reúne idioma, recuperação de senha e saída. **Moderação** aparece para contas com essa permissão.
+- **Nítida** é a qualidade padrão. O jogo ajusta a área ao monitor e compensa reduções no zoom do navegador para manter os textos e controles legíveis. Use **Desempenho** para reduzir a resolução de renderização em áreas grandes ou **Tela cheia** para ganhar espaço.
+
+O cliente de desktop também pode ser usado para testes locais com `bin/bymr-local.swf`.
 
 <br>
 
-## 🛠️ Setup & Installation
-Choose your setup method:
+## Ligar o servidor local
+
+Você precisa do Docker com Compose v2, do Bun e de um ambiente de compilação ActionScript com Java e Apache Flex SDK.
+
+1. Abra a raiz do repositório no VS Code com a extensão **ActionScript & MXML** e selecione o Flex SDK no seletor de SDK da extensão. Em **Tasks: Run Task**, execute **compile-local**. A tarefa usa `asconfig.local.json` e gera `bin/bymr-local.swf`. [Guia de compilação ActionScript](https://github.com/bym-refitted/backyard-monsters-refitted/wiki/Client-Recompilation-Guide)
+
+2. Com o Docker em execução, use o terminal na raiz do repositório.
+
+   ```sh
+   cd server
+   bun install --frozen-lockfile
+   bun run build
+   bun run web:prepare
+   ```
+
+   O comando `bun run build` cria `server/.env` com uma chave de sessão aleatória no primeiro uso. Preserve o arquivo se já tiver um banco. Se a porta `5432` estiver ocupada pelo PostgreSQL do computador, configure `DB_HOST_PORT=15432` em `server/.env` antes de subir os contêineres.
+
+3. Suba o servidor, o PostgreSQL e o Redis. O serviço `db-init` prepara o esquema e aplica as migrações. O estado `Exited (0)` para esse serviço indica que a preparação terminou.
+
+   ```sh
+   docker compose up -d --build
+   docker compose ps -a
+   ```
+
+4. Abra [o jogo local](http://localhost:3001/play/). O chat local usa a porta `3010`. Se a página não abrir, consulte os logs.
+
+   ```sh
+   docker compose logs --tail=100 web db-init
+   ```
+
+Para ligar novamente, execute `docker compose up -d` em `server/`. Para parar os serviços mantendo o banco, use `docker compose stop`. Depois de alterar o ActionScript, execute novamente **compile-local**, `bun run web:prepare` e `docker compose up -d --build`.
+
+No Beekeeper Studio, escolha PostgreSQL e conecte em `localhost`, usando a porta `DB_HOST_PORT` ou `5432` quando ela não estiver configurada. Use `DB_NAME`, `DB_USER` e `DB_PASSWORD` de `server/.env`. As tabelas do jogo ficam no esquema `bym`, incluindo `bym."user"` para contas e `bym.save` para quintais.
+
+### Guias adicionais
 
 | Setup Type | Documentation |
 |------------|---------------|
@@ -34,6 +75,32 @@ Choose your setup method:
 | 🎮 **Client Setup** | [Client Recompilation Guide](https://github.com/bym-refitted/backyard-monsters-refitted/wiki/Client-Recompilation-Guide) |
 | 🐳 **Docker Setup** | [Docker Configuration](https://github.com/bym-refitted/backyard-monsters-refitted/wiki/Docker-Setup) |
 | 📱 **Android Setup** | [Android APK Compilation](https://github.com/bym-refitted/backyard-monsters-refitted/wiki/Android-APK-Setup) |
+
+## Publicar em uma VPS
+
+1. Aponte o DNS do jogo para a VPS e libere as portas TCP `80` e `443` para o Caddy atender as conexões. O servidor do jogo, o PostgreSQL, o Redis e o chat se comunicam pela rede privada do Docker.
+2. Compile `bin/bymr-local.swf` a partir da mesma versão do projeto que será publicada. Se compilar em outro computador, copie o arquivo para `bin/` na VPS. O Docker inclui o SWF e o Ruffle na imagem de produção.
+3. Em `server/`, copie `example.production.env` para `.env.production`. Configure `GAME_DOMAIN`, uma senha para `DB_PASSWORD`, uma chave aleatória para `SECRET_KEY` e os dados de SMTP. Use `openssl rand -hex 32` para gerar a chave. A porta SMTP `465` usa TLS implícito e a `587` usa STARTTLS.
+4. Em `server/`, compile e inicie os contêineres.
+
+   ```sh
+   docker compose --env-file .env.production -f docker-compose.production.yml build web
+   docker compose --env-file .env.production -f docker-compose.production.yml up -d --no-build --wait
+   ```
+
+Abra `https://<GAME_DOMAIN>/play/`. O perfil de produção usa HTTPS e sessões assinadas. O chat passa por `wss://<GAME_DOMAIN>/play/chat` e os links de recuperação abrem `/reset-password/`. Mantenha `REQUIRE_DISCORD=false` para permitir cadastro e login com e-mail e senha pelo site. Ative a exigência de Discord quando a instância já tiver a integração de verificação.
+
+Para atualizar a VPS, faça um backup do PostgreSQL e repita a compilação e a subida dos contêineres. O `db-init` aplica as migrações antes de o servidor começar a atender.
+
+## Moderação
+
+Para conceder acesso à moderação a uma conta existente, execute em `server/`, substituindo `NOME_DO_JOGADOR` pelo nome usado no jogo.
+
+```sh
+docker compose exec web bun run role:set NOME_DO_JOGADOR moderator
+```
+
+Na VPS, inclua `--env-file .env.production -f docker-compose.production.yml` após `docker compose`. Use `player` no lugar de `moderator` para revogar a função. Atualize a página para carregar o menu de acordo com a permissão atual. O painel permite buscar jogadores, ajustar o Shiny de um quintal existente e arquivar ou restaurar contas. O arquivamento desativa o acesso e mantém o quintal salvo.
 
 <br>
 

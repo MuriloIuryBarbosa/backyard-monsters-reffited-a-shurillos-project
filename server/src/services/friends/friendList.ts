@@ -293,20 +293,26 @@ export const getFriendList = async (user: User): Promise<FriendList> => {
  * would scan every row to return mostly names that merely contain those two
  * letters.
  *
- * Leaves out the searcher, banned players, players without a base, and anyone
- * blocked in either direction.
+ * Leaves out the searcher, unavailable accounts and anyone blocked in either
+ * direction. The website can include players who have yet to start their yard.
  *
  * @param {User} user - The player searching.
  * @param {string} term - What they typed.
+ * @param {object} options - Whether to include players without a yard.
  * @returns {Promise<PlayerSearchResult[]>} Matches with how each relates to the searcher.
  */
-export const searchPlayers = async (user: User, term: string): Promise<PlayerSearchResult[]> => {
+export const searchPlayers = async (
+  user: User,
+  term: string,
+  { includeWithoutYard = false } = {},
+): Promise<PlayerSearchResult[]> => {
   const selfId = user.userid;
 
   const where: FilterQuery<User> = {
     userid: user.blockedUsers.length ? { $ne: selfId, $nin: user.blockedUsers } : { $ne: selfId },
     banned: false,
-    save: { $ne: null },
+    archived_at: null,
+    ...(!includeWithoutYard && { save: { $ne: null } }),
     ...matchesName(term),
   };
 

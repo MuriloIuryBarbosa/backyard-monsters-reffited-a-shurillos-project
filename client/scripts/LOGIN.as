@@ -45,7 +45,7 @@ package {
         }
 
         public static function Login():void {
-            if (GAME.token) {
+            if (GAME.webClient || GAME.token) {
                 PLEASEWAIT.Show("Logging in...");
                 GLOBAL.eventDispatcher.addEventListener(KEYS.LANGUAGE_FILE_LOADED, onLanguageLoaded);
                 GLOBAL.LanguageSetup();
@@ -59,8 +59,25 @@ package {
         private static function onLanguageLoaded(event:Event):void {
             GLOBAL.eventDispatcher.removeEventListener(KEYS.LANGUAGE_FILE_LOADED, onLanguageLoaded);
 
+            if (GAME.webClient) {
+                var player:Object = GAME.webPlayer;
+                GAME.webPlayer = null;
+                if (player && player.token) {
+                    loadPlayerMap(player);
+                }
+                return;
+            }
             var authInfo:Array = [["token", GAME.sharedObj.data.token]];
             AuthenticateUser(authInfo);
+        }
+
+        private static function loadPlayerMap(serverData:Object):void {
+            token = serverData.token;
+            new URLLoaderApi().load(GLOBAL._apiURL + "bm/getnewmap", [["version", GLOBAL._version.Get()]],
+                function(mapData:Object):void {
+                    MapRoomManager.instance.init(mapData.newmap, mapData.mapheaderurl);
+                    LOGIN.Process(serverData);
+                });
         }
 
         public static function AuthenticateUser(authInfo:Array):void {
@@ -75,14 +92,7 @@ package {
 
                     if (serverData.error == 0) {
                         if (GLOBAL._local) {
-                            // Set token
-                            token = serverData.token;
-
-                            new URLLoaderApi().load(GLOBAL._apiURL + "bm/getnewmap", [["token", token]],
-                                    function(mapData:Object):void {
-                                        MapRoomManager.instance.init(mapData.newmap, mapData.mapheaderurl);
-                                        LOGIN.Process(serverData);
-                                    });
+                            loadPlayerMap(serverData);
                         }
                         else {
                             // ToDo: Implement if we are running in a browser.

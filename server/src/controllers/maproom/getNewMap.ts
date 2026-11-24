@@ -1,8 +1,11 @@
 import { MapRoom3, MapRoomVersion } from "../../enums/MapRoom.js";
 import { Status } from "../../enums/StatusCodes.js";
 import { User } from "../../database/models/user.model.js";
-import { BASE_URL, PORT, postgres } from "../../server.js";
+import { postgres } from "../../server.js";
+import { publicServerUrl } from "../../config/publicServerUrl.js";
 import type { KoaController } from "../../utils/KoaController.js";
+
+export const mapRoomHeaderPath = "/worldmapv3/header";
 
 /**
  * Controller to get Map Room metadata and configuration.
@@ -32,7 +35,7 @@ export const getNewMap: KoaController = async (ctx) => {
   if (cell?.map_version === MapRoomVersion.V3) {
     ctx.body = {
       newmap: true,
-      mapheaderurl: `${BASE_URL}:${PORT}/api/bm/getnewmap`,
+      mapheaderurl: `${publicServerUrl()}${mapRoomHeaderPath}`,
       width: MapRoom3.WIDTH,
       height: MapRoom3.HEIGHT,
     };

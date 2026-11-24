@@ -782,8 +782,8 @@ package com.monsters.chat {
         public function position():void {
             var _loc6_:int = 0;
             var _loc7_:int = 0;
-            var _loc1_:int = GLOBAL._ROOT.stage.stageWidth;
-            var _loc2_:int = GLOBAL._ROOT.stage.stageHeight;
+            var _loc1_:int = GLOBAL.StageWidth;
+            var _loc2_:int = GLOBAL.StageHeight;
             var _loc3_:int = 0;
             var _loc4_:int = 0;
             var _loc5_:Rectangle = new Rectangle(0 - (_loc1_ - GLOBAL._SCREENINIT.width) / 2 + 0, 0 - (_loc2_ - GLOBAL._SCREENINIT.height) / 2 + _loc4_, _loc1_, _loc2_);

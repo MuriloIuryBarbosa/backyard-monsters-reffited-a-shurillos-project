@@ -1,0 +1,103 @@
+#site.playing {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #101511;
+}
+
+.playing .masthead, .playing > main { width: 100%; }
+.playing .masthead {
+  min-height: 2.65rem;
+  flex-wrap: wrap;
+  padding: .3rem .75rem;
+  gap: .25rem 1.25rem;
+  z-index: 2;
+  background: #101811;
+}
+
+.playing .brand { display: flex; gap: .5rem; align-items: baseline; font-size: .875rem; }
+.playing .brand .edition { font-size: .625rem; }
+.playing .masthead nav { gap: .25rem; }
+.playing .masthead .button { min-height: 1.8rem; padding: .2rem .5rem; }
+#game-settings { margin-left: auto; }
+.graphics-quality { display: flex; align-items: center; gap: .375rem; }
+.graphics-quality select { min-height: 1.8rem; width: auto; padding-block: .15rem; }
+
+.playing > main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+#game {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #171e17;
+}
+
+#game-stage {
+  position: absolute;
+  overflow: hidden;
+  background: #19231a;
+}
+
+ruffle-player { display: block; width: 100%; height: 100%; }
+
+#game-message {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  transform: translate(-50%, -50%);
+  padding: 1.25rem;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: .85rem;
+}
+
+#retry-game { margin-top: .75rem; }
+
+#fullscreen-status {
+  position: absolute;
+  z-index: 1;
+  top: .5rem;
+  right: .5rem;
+}
+
+.playing #site-content {
+  position: absolute;
+  z-index: 2;
+  top: .5rem;
+  right: .5rem;
+  width: min(32rem, calc(100% - 1rem));
+  max-height: calc(100% - 1rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: .875rem;
+  border: 1px solid var(--border);
+  border-radius: .85rem;
+  background: #132015;
+  box-shadow: 0 .6rem 2rem #0008;
+}
+
+.playing.wide-panel #site-content { width: min(60rem, calc(100% - 1rem)); }
+#close-panel { margin-bottom: .85rem; }
+#guest-recovery, #account-recovery { display: contents; }
+#player-home { max-width: none; }
+#player-home form { display: grid; gap: .55rem; margin-block: 1rem; }
+#player-home form .button { margin-top: 0; }
+#player-home #logout { margin-left: .75rem; }
+
+@media (max-width: 48rem) {
+  .playing .masthead { gap: .25rem .5rem; }
+  .playing .brand { display: none; }
+  #game-settings { margin-left: 0; }
+}

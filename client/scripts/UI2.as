@@ -533,7 +533,7 @@ package {
 
         public static function ResizeHandler(param1:Event = null):void {
             var _loc4_:Rectangle = null;
-            var _loc2_:int = GLOBAL._ROOT.stage.stageWidth;
+            var _loc2_:int = GLOBAL.StageWidth;
             var _loc3_:int = GLOBAL.GetGameHeight();
             var _loc5_:int = _wildMonsterBar != null ? 40 : 0;
             _loc4_ = new Rectangle(0 - (_loc2_ - GLOBAL._SCREENINIT.width) / 2, 0 - (_loc3_ - (GLOBAL._SCREENINIT.height + _loc5_)) / 2, _loc2_, _loc3_);

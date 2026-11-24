@@ -19,6 +19,10 @@ const passwordSchema = z.preprocess(
     .regex(/[^a-zA-Z0-9]/, passwordSpecialError)
     .optional()
 );
+const newPasswordSchema = passwordSchema.pipe(z.string().refine(
+  (password) => Buffer.byteLength(password) <= 72,
+  "Password must be at most 72 bytes"
+));
 
 /**
  * Schema to validate email addresses.
@@ -65,7 +69,7 @@ export const UserLoginSchema = z.object({
 export const UserRegistrationSchema = z.object({
   username: usernameSchema,
   email: emailSchema,
-  password: passwordSchema,
+  password: newPasswordSchema,
 });
 
 /**
@@ -99,7 +103,7 @@ export const UpdateRadioAlertsSchema = z.object({
  * - Token must be a string.
  */
 export const ResetPasswordSchema = z.object({
-  password: passwordSchema,
+  password: newPasswordSchema,
   token: z.string(),
 });
 

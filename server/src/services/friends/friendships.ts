@@ -115,10 +115,10 @@ export const sendFriendRequest = async (user: User, targetId: number): Promise<F
   const target = await postgres.em.findOne(
     User,
     { userid: targetId },
-    { fields: ["userid", "banned", "blockedUsers"] }
+    { fields: ["userid", "banned", "archived_at", "blockedUsers"] }
   );
 
-  if (!target || target.banned) throw friendUnavailableErr();
+  if (!target || target.banned || target.archived_at) throw friendUnavailableErr();
 
   const blocked = user.blockedUsers.includes(targetId) || target.blockedUsers.includes(user.userid);
 

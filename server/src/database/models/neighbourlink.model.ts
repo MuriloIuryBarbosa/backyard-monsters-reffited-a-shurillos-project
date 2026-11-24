@@ -19,6 +19,6 @@ export class NeighbourLink {
   @Property({ type: "number" })
   user_b_id!: number;
 
-  @Property({ type: Date })
+  @Property({ type: Date, defaultRaw: "now()" })
   created_at: Opt<Date> = new Date();
 }

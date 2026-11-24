@@ -18,7 +18,11 @@ export const logRequest = async (ctx: Context, next: Next) => {
 
     if (ctx.request.body && Object.keys(ctx.request.body).length > 0) {
       console.log();
-      console.log(inspect(ctx.request.body, { colors: true, depth: 5, compact: false }));
+      const body = Object.fromEntries(Object.entries(ctx.request.body).map(([key, value]) => [
+        key,
+        /password|token/i.test(key) ? "[redacted]" : value,
+      ]));
+      console.log(inspect(body, { colors: true, depth: 5, compact: false }));
     }
 
     console.log("=".repeat(70) + "\n");

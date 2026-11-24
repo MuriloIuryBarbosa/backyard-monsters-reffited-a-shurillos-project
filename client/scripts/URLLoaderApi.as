@@ -4,6 +4,7 @@ package {
     import flash.events.HTTPStatusEvent;
     import flash.events.IOErrorEvent;
     import flash.events.SecurityErrorEvent;
+    import flash.external.ExternalInterface;
     import flash.net.URLLoader;
     import flash.net.URLRequest;
     import flash.net.URLRequestHeader;
@@ -87,6 +88,9 @@ package {
                         errMessage = "IOError error event occurred while making the request";
                         GLOBAL.ErrorMessage(errMessage, GLOBAL.ERROR_ORANGE_BOX_ONLY);
                     });
+                if (GAME.webClient) {
+                    loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, notifyWebAuthFailure);
+                }
 
             }
             catch (error:Error) {
@@ -154,6 +158,7 @@ package {
 
         private function setStatus(param1:HTTPStatusEvent):void {
             this._status = param1.status;
+            if (GAME.webClient) notifyWebAuthFailure(param1);
             switch (this._status) {
                 case 404:
                     LOGGER.Log("err", "URLLoaderApi HTTP status " + this._status + " Not Found");
@@ -192,6 +197,12 @@ package {
                     if (this._status > 400) {
                         LOGGER.Log("err", "URLLoaderApi HTTP status " + this._status + " Other status");
                     }
+            }
+        }
+
+        private static function notifyWebAuthFailure(event:HTTPStatusEvent):void {
+            if (event.status == 401 && ExternalInterface.available) {
+                ExternalInterface.call("bymrGameUnauthorized");
             }
         }
 

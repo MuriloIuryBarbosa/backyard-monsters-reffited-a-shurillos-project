@@ -47,7 +47,7 @@ package {
                 var _loc4_:int = 0;
                 var _loc5_:int = 0;
                 var _loc6_:Object = null;
-                var _loc2_:int = GLOBAL._ROOT.stage.stageWidth;
+                var _loc2_:int = GLOBAL.StageWidth;
                 var _loc3_:Point = new Point();
                 if (ResizeParams) {
                     if (ResizeParams[0] == "percent" && ResizeParams[1] && ResizeParams[1] is Point) {
@@ -113,13 +113,13 @@ package {
                 }
             }
             else {
-                if (y < GLOBAL._ROOT.stage.stageHeight / 2) {
-                    mcArrow.rotation = this.x / (6 / GLOBAL._SCREENINIT.width * GLOBAL._ROOT.stage.stageWidth) + 130;
+                if (y < GLOBAL.StageHeight / 2) {
+                    mcArrow.rotation = this.x / (6 / GLOBAL._SCREENINIT.width * GLOBAL.StageWidth) + 130;
                 }
                 else {
-                    mcArrow.rotation = (0 - this.x) / (6 / GLOBAL._SCREENINIT.width * GLOBAL._ROOT.stage.stageWidth) + 45;
+                    mcArrow.rotation = (0 - this.x) / (6 / GLOBAL._SCREENINIT.width * GLOBAL.StageWidth) + 45;
                 }
-                if (x < GLOBAL._ROOT.stage.stageWidth / 2) {
+                if (x < GLOBAL.StageWidth / 2) {
                     mcArrow.mcArrow.gotoAndStop(1);
                 }
                 else {

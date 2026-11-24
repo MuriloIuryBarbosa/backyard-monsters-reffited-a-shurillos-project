@@ -1,5 +1,6 @@
 # Environment files
 .env
+server/.env.production
 
 # Node dependencies
 node_modules/
@@ -7,6 +8,8 @@ node_modules/
 # Build output
 dist/
 bin/
+server/public/play/game.swf
+server/public/play/ruffle/
 
 # IDE / editor
 .idea

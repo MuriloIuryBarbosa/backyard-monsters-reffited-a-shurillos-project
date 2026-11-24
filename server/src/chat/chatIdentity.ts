@@ -26,6 +26,7 @@ const CHAT_FIELDS = [
   "userid",
   "username",
   "banned",
+  "archived_at",
   "pic_square",
   "save.points",
   "save.basevalue"
@@ -73,7 +74,7 @@ export const authenticate = async (ws: ServerWebSocket<SocketData>, message: Aut
 
   const user = await em.findOne(User, { userid: message.userId }, { fields: CHAT_FIELDS });
 
-  if (!user || user.banned) {
+  if (!user || user.banned || user.archived_at) {
     send(ws, { type: ServerMessageType.AuthFail, reason: AuthFailReason.UserNotFound });
     ws.close();
     return;

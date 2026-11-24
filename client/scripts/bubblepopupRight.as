@@ -61,7 +61,7 @@ package {
             mcBG.height = int(mcText.height + 6);
             mcBG.y = int(mcText.y - 3);
             mcBG.x = -int(mcBG.width + 8);
-            var _loc3_:int = GLOBAL._ROOT.stage.stageWidth;
+            var _loc3_:int = GLOBAL.StageWidth;
             var _loc4_:int = GLOBAL.GetGameHeight();
             _loc5_ = new Rectangle(0 - (_loc3_ - 760) / 2, 0 - (_loc4_ - 520) / 2, _loc3_, _loc4_);
             if (x + mcBG.x < _loc5_.x + 10) {

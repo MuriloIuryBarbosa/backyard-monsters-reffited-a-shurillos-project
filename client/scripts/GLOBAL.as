@@ -555,13 +555,14 @@ package {
        */
         public static function LanguageSetup():void {
 
-            var token:String = GAME.sharedObj.data.token;
-            var language:String = GAME.sharedObj.data.language;
             KEYS._storageURL = GLOBAL.languageUrl;
             KEYS.GetSupportedLanguages();
 
-            if (token) {
-                KEYS.Setup(language);
+            if (GAME.webClient) {
+                KEYS.Setup(GAME.language);
+            }
+            else if (GAME.sharedObj.data.token) {
+                KEYS.Setup(GAME.sharedObj.data.language);
             }
             else {
                 KEYS.Setup("english");
@@ -1703,7 +1704,7 @@ package {
         }
 
         public static function GetGameHeight():int {
-            return _ROOT.stage.stageHeight;
+            return StageHeight;
         }
 
         public static function AFK():void {
@@ -1803,8 +1804,8 @@ package {
                 param1 = GLOBAL._layerWindows;
             }
             _loc2_ = param1.addChild(new popup_bg());
-            _loc2_.width = GLOBAL._ROOT.stage.stageWidth;
-            _loc2_.height = GLOBAL._ROOT.stage.stageHeight;
+            _loc2_.width = StageWidth;
+            _loc2_.height = StageHeight;
             _loc2_.x = GLOBAL._SCREEN.x;
             _loc2_.y = GLOBAL._SCREEN.y;
             _blockerList.push(_loc2_);
@@ -1890,7 +1891,7 @@ package {
 
         public static function RefreshScreen():void {
             var _loc3_:Rectangle = null;
-            var _loc1_:int = int(GLOBAL._ROOT.stage.stageWidth);
+            var _loc1_:int = StageWidth;
             var _loc2_:int = int(GLOBAL.GetGameHeight());
             var _loc4_:int = UI2._wildMonsterBar != null ? 40 : 0;
             if (!_SCREEN || !_SCREEN.x || !_SCREEN.y || !_SCREEN.width || !_SCREEN.height) {
@@ -2238,19 +2239,19 @@ package {
         }
 
         public static function get StageX():int {
-            return Math.ceil((760 - _ROOT.stage.stageWidth) / 2);
+            return Math.ceil((760 - StageWidth) / 2);
         }
 
         public static function get StageY():int {
-            return Math.ceil((670 - _ROOT.stage.stageHeight) / 2);
+            return Math.ceil((670 - StageHeight) / 2);
         }
 
         public static function get StageWidth():int {
-            return _ROOT.stage.stageWidth;
+            return Math.round(_ROOT.stage.stageWidth / _ROOT.scaleX);
         }
 
         public static function get StageHeight():int {
-            return _ROOT.stage.stageHeight;
+            return Math.round(_ROOT.stage.stageHeight / _ROOT.scaleY);
         }
     }
 }
